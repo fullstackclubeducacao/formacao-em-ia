@@ -1,0 +1,95 @@
+{
+  "titulo_sugerido": "Implantação e Configuração do Dashboard Next.js para Chatwoot com Docker e Portainer",
+  "resumo_executivo": "A aula detalha a instalação e o deploy de um aplicativo de dashboard avançado, construído com Next.js e Tailwind CSS, para o Chatwoot. Esta solução de frontend unifica e visualiza todas as conversas de um contato do Chatwoot em uma única linha do tempo cronológica, oferecendo funcionalidades de busca e exportação. O projeto é robusto, escalável e projetado para fácil customização, aproveitando o cache do Next.js e consumindo diretamente a API do Chatwoot sem interação com banco de dados. A sessão abrange desde a configuração local e a construção de imagens Docker até o deploy em produção utilizando Portainer e Cloudflare para gerenciamento de DNS, além de abordar a configuração de variáveis de ambiente e tokens de acesso.",
+  "pontos_chave": [
+    "Instalação e deploy de um dashboard Next.js para Chatwoot, unificando e visualizando conversas em uma timeline cronológica.",
+    "Utilização de Docker para empacotamento e Portainer para orquestração e gerenciamento do deploy da aplicação.",
+    "Configuração de variáveis de ambiente essenciais (URL do Chatwoot, token de administrador) e apontamento de domínio via Cloudflare (registro CNAME).",
+    "O projeto é otimizado para baixo consumo de recursos, escalável e robusto, consumindo diretamente a API do Chatwoot.",
+    "Demonstração prática da integração do dashboard com o Chatwoot, incluindo funcionalidades como exportação e responsividade."
+  ],
+  "tecnologias_mencionadas": [
+    "Next.js",
+    "Tailwind CSS",
+    "Docker",
+    "Portainer",
+    "Cloudflare",
+    "Chatwoot",
+    "Yarn"
+  ],
+  "comandos_codigo": [
+    "yarn build",
+    "yarn dev",
+    "docker build",
+    "docker login",
+    "Configuração de variáveis de ambiente (CHATWOOT_URL, CHATWOOT_ADMIN_TOKEN)",
+    "Criação de registro DNS CNAME no Cloudflare",
+    "Configuração de Docker Compose (Docker Swarm stack) no Portainer"
+  ],
+  "conceitos_importantes": [
+    {
+      "conceito": "Next.js",
+      "definicao": "Framework React para construção de aplicações web com renderização do lado do servidor (SSR) e geração de sites estáticos (SSG), otimizado para performance e escalabilidade."
+    },
+    {
+      "conceito": "Tailwind CSS",
+      "definicao": "Framework CSS utilitário que permite construir designs personalizados rapidamente, compondo classes de baixo nível diretamente no HTML."
+    },
+    {
+      "conceito": "Docker",
+      "definicao": "Plataforma para desenvolver, enviar e executar aplicações em contêineres, que são pacotes leves e portáteis de software."
+    },
+    {
+      "conceito": "Portainer",
+      "definicao": "Ferramenta de gerenciamento de código aberto para Docker e Kubernetes, que simplifica a implantação e o gerenciamento de contêineres através de uma interface gráfica."
+    },
+    {
+      "conceito": "Chatwoot API",
+      "definicao": "Interface de programação de aplicações do Chatwoot, utilizada pelo dashboard para consumir dados de conversas diretamente, sem acesso ao banco de dados."
+    },
+    {
+      "conceito": "Docker Swarm",
+      "definicao": "Ferramenta de orquestração nativa do Docker para gerenciar um cluster de máquinas Docker como um único sistema virtual, permitindo deploy e escalabilidade de serviços."
+    },
+    {
+      "conceito": "CNAME Record (DNS)",
+      "definicao": "Tipo de registro DNS que mapeia um nome de domínio (alias) para outro nome de domínio canônico, usado para apontar subdomínios para outros serviços."
+    },
+    {
+      "conceito": "Variáveis de Ambiente",
+      "definicao": "Valores dinâmicos que afetam o comportamento dos processos em execução em um ambiente, usados para configurar aplicações sem modificar o código-fonte."
+    }
+  ],
+  "nivel_dificuldade": "intermediário",
+  "duracao_estimada": "20-25 minutos",
+  "pre_requisitos": [
+    "Conhecimento básico de desenvolvimento web (HTML, CSS, JavaScript)",
+    "Familiaridade com Next.js e React",
+    "Noções de linha de comando (terminal)",
+    "Conhecimento básico de Docker e contêineres",
+    "Entendimento de conceitos de DNS e gerenciamento de domínios",
+    "Conta e familiaridade com Chatwoot"
+  ],
+  "objetivos_aprendizado": [
+    "Instalar e configurar o dashboard Next.js para Chatwoot localmente.",
+    "Realizar o build de imagens Docker para diferentes arquiteturas (AMD/ARM).",
+    "Implantar o dashboard em ambiente de produção utilizando Portainer e Docker Swarm.",
+    "Configurar o DNS via Cloudflare para o acesso ao dashboard.",
+    "Integrar o dashboard com a API do Chatwoot utilizando um token de administrador.",
+    "Compreender a arquitetura e os recursos de escalabilidade do projeto."
+  ],
+  "tags": [
+    "Chatwoot",
+    "Dashboard",
+    "Next.js",
+    "Docker",
+    "Portainer",
+    "Cloudflare",
+    "Frontend",
+    "Deploy",
+    "Web Development",
+    "API Integration",
+    "Containerization",
+    "DevOps"
+  ]
+}
