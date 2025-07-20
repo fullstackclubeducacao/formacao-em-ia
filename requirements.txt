@@ -1,3 +1,4 @@
-groq>=0.29.0
-google-genai>=1.23.0
+groq
 pydantic>=2.11.7
+google-generativeai
+Pillow>=10.0.0
