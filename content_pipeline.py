@@ -304,27 +304,59 @@ class UnifiedContentPipeline:
     
     def __init__(self):
         self.config = ConfigManager()
-        
-        if not self.config.groq_available:
-            print("❌ Sistema requer Groq para transcrição. Configure GROQ_API_KEY.")
-            sys.exit(1)
     
     # --- MÓDULO 1: TRANSCRIÇÃO (TESTADO E FUNCIONAL) ---
     
     def get_audio_duration(self, file_path: str) -> Optional[float]:
-        """Obtém a duração de um arquivo de mídia usando ffprobe"""
-        command = [
-            FFPROBE_PATH,
-            "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            file_path
-        ]
+        """Obtém a duração de um arquivo de mídia usando ffmpeg"""
+        # Primeiro tenta usar ffprobe se existir
+        if os.path.exists(FFPROBE_PATH):
+            command = [
+                FFPROBE_PATH,
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                file_path
+            ]
+        else:
+            # Fallback: usar ffmpeg para obter duração
+            command = [
+                FFMPEG_PATH,
+                "-i", file_path,
+                "-f", "null",
+                "-"
+            ]
+        
         try:
-            result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=REQUEST_TIMEOUT)
-            duration = float(result.stdout)
+            if os.path.exists(FFPROBE_PATH):
+                # Usar ffprobe
+                result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=REQUEST_TIMEOUT)
+                duration = float(result.stdout)
+            else:
+                # Usar ffmpeg e extrair duração do stderr
+                result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=REQUEST_TIMEOUT)
+                
+                # Extrair duração do stderr (ffmpeg mostra info no stderr)
+                stderr_output = result.stderr
+                
+                # Procurar por padrão "Duration: HH:MM:SS.mm"
+                import re
+                duration_match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})', stderr_output)
+                
+                if duration_match:
+                    hours = int(duration_match.group(1))
+                    minutes = int(duration_match.group(2))
+                    seconds = int(duration_match.group(3))
+                    centiseconds = int(duration_match.group(4))
+                    
+                    duration = hours * 3600 + minutes * 60 + seconds + centiseconds / 100.0
+                else:
+                    print(f"❌ Não foi possível extrair duração do vídeo")
+                    return None
+            
             debug_print(f"Audio duration: {duration:.2f}s for {file_path}")
             return duration
+            
         except (subprocess.CalledProcessError, ValueError, subprocess.TimeoutExpired) as e:
             print(f"❌ Erro ao obter duração do áudio: {e}")
             return None
@@ -1396,7 +1428,8 @@ Return only the {target_language} translations, one per line, in the same order.
     
     def process_video_complete(self, video_path: str, modulo: int = 1, aula: int = 1, 
                              include_subtitles: bool = False, include_chapters: bool = False,
-                             include_shorts: bool = False, include_metadata: bool = False) -> Dict[str, Any]:
+                             include_shorts: bool = False, include_metadata: bool = False,
+                             languages: List[str] = None) -> Dict[str, Any]:
         """Processa um vídeo completamente com todas as funcionalidades"""
         print_header(f"PROCESSAMENTO COMPLETO - {os.path.basename(video_path)}")
         
@@ -1430,7 +1463,7 @@ Return only the {target_language} translations, one per line, in the same order.
             # Etapa 5: Legendas (se solicitado)
             if include_subtitles:
                 print_step("Gerando legendas SRT", 7, 5)
-                subtitle_files = self.generate_subtitles(transcription, output_dir)
+                subtitle_files = self.generate_subtitles(transcription, output_dir, languages)
                 files_created.extend(subtitle_files)
             else:
                 print("⏭️  Etapa 5/7: Legendas SRT - PULADA")
@@ -1550,7 +1583,8 @@ Return only the {target_language} translations, one per line, in the same order.
                 include_subtitles=include_youtube_features,
                 include_chapters=include_youtube_features,
                 include_shorts=include_youtube_features,
-                include_metadata=include_youtube_features
+                include_metadata=include_youtube_features,
+                languages=["pt", "en", "es"] if include_youtube_features else None
             )
             
             result['video_info'] = {
@@ -2016,7 +2050,7 @@ class InteractiveMenu:
         choice = input(f"\n❓ Confirmar processamento? (s/N): ").strip().lower()
         return choice == 's'
     
-    def show_confirmation(self, video_path: Path, modulo: int, aula: int, features: Dict[str, bool]) -> bool:
+    def show_confirmation(self, video_path: Path, modulo: int, aula: int, features: Dict[str, Any]) -> bool:
         """Mostra confirmação final"""
         print(f"\n{'='*60}")
         print("📋 CONFIRMAÇÃO DO PROCESSAMENTO")
@@ -2025,22 +2059,30 @@ class InteractiveMenu:
         print(f"📊 Módulo: {modulo} | Aula: {aula}")
         print(f"🎬 Funcionalidades YouTube:")
         
-        for feature, enabled in features.items():
+        # Mostrar apenas as funcionalidades booleanas
+        boolean_features = {
+            "subtitles": "Legendas SRT",
+            "chapters": "Capítulos",
+            "shorts": "YouTube Shorts", 
+            "metadata": "Metadados"
+        }
+        
+        for feature, name in boolean_features.items():
+            enabled = features.get(feature, False)
             icon = "✅" if enabled else "❌"
-            names = {
-                "subtitles": "Legendas SRT",
-                "chapters": "Capítulos",
-                "shorts": "YouTube Shorts", 
-                "metadata": "Metadados"
-            }
-            print(f"   {icon} {names[feature]}")
+            print(f"   {icon} {name}")
+            
+            # Mostrar idiomas se legendas estiverem habilitadas
+            if feature == "subtitles" and enabled:
+                languages = features.get("languages", ["pt"])
+                print(f"      🌐 Idiomas: {', '.join(languages)}")
         
         # Estimativa de tempo
         base_time = 3  # minutos base
-        if features["subtitles"]: base_time += 2
-        if features["chapters"]: base_time += 1
-        if features["shorts"]: base_time += 5
-        if features["metadata"]: base_time += 1
+        if features.get("subtitles", False): base_time += 2
+        if features.get("chapters", False): base_time += 1
+        if features.get("shorts", False): base_time += 5
+        if features.get("metadata", False): base_time += 1
         
         print(f"\n⏱️  Tempo estimado: ~{base_time} minutos")
         
@@ -2081,19 +2123,28 @@ class InteractiveMenu:
             return
         
         # Executar processamento
-        result = self.pipeline.process_video_complete(
-            str(video_path), modulo, aula,
-            include_subtitles=features["subtitles"],
-            include_chapters=features["chapters"],
-            include_shorts=features["shorts"],
-            include_metadata=features["metadata"]
-        )
-        
-        if result["status"] == "success":
-            print(f"\n🎉 Processamento concluído com sucesso!")
-            print(f"📁 Verifique os arquivos em: {result['output_dir']}")
-        else:
-            print(f"\n❌ Erro no processamento: {result['message']}")
+        try:
+            result = self.pipeline.process_video_complete(
+                str(video_path), modulo, aula,
+                include_subtitles=features["subtitles"],
+                include_chapters=features["chapters"],
+                include_shorts=features["shorts"],
+                include_metadata=features["metadata"],
+                languages=features.get("languages", ["pt"])
+            )
+            
+            if result["status"] == "success":
+                print(f"\n🎉 Processamento concluído com sucesso!")
+                print(f"📁 Verifique os arquivos em: {result['output_dir']}")
+            else:
+                print(f"\n❌ Erro no processamento: {result['message']}")
+                
+        except KeyError as e:
+            print(f"\n❌ Erro de configuração: {e}")
+            print("   Verifique se todas as funcionalidades foram configuradas corretamente.")
+        except Exception as e:
+            print(f"\n❌ Erro inesperado: {e}")
+            print("   Tente novamente ou use o modo simples (opção 4).")
     
     def menu_batch(self):
         """Menu para processamento em lote"""
@@ -2275,7 +2326,7 @@ def main():
                 print(f"❌ Vídeo não encontrado: {video_path}")
                 sys.exit(1)
             
-            result = pipeline.process_video_complete(video_path, modulo, aula)
+            result = pipeline.process_video_complete(video_path, modulo, aula, languages=["pt"])
             sys.exit(0 if result["status"] == "success" else 1)
             
         elif command == "--batch":

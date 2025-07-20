@@ -2,21 +2,21 @@
 setlocal enabledelayedexpansion
 
 REM ===============================================
-REM  🤖 Sistema de Transcrição Inteligente
+REM  🤖 Sistema de Edição de Vídeos AI
 REM  Instalador Automático para Windows
-REM  Versão: 2.0.0 - Full Stack Club
+REM  Versão: 3.0.0 - Instalação Completa
 REM ===============================================
 
 echo.
 echo ==========================================
-echo 🤖 Sistema de Transcricao Inteligente
-echo    Instalador para Windows
+echo 🤖 Sistema de Edicao de Videos AI
+echo    Instalador Completo para Windows
 echo ==========================================
 echo.
 
 REM Verificar se estamos no diretório correto
-if not exist "transcribe.py" (
-    echo ❌ ERRO: transcribe.py nao encontrado!
+if not exist "content_pipeline.py" (
+    echo ❌ ERRO: content_pipeline.py nao encontrado!
     echo    Execute este instalador na pasta raiz do projeto.
     pause
     exit /b 1
@@ -39,6 +39,43 @@ goto :eof
 
 :print_info
 echo ℹ️  %1
+goto :eof
+
+:download_ffmpeg
+echo 🎥 Baixando FFmpeg + FFprobe...
+echo 📥 URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
+
+REM Baixar FFmpeg usando PowerShell
+powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip' -OutFile 'ffmpeg.zip'}"
+if %errorlevel% neq 0 (
+    call :print_error "Falha ao baixar FFmpeg"
+    echo 📥 Baixe manualmente em: https://ffmpeg.org/download.html
+    goto :eof
+)
+
+call :print_success "Download concluido"
+
+REM Extrair FFmpeg
+echo 📦 Extraindo FFmpeg...
+powershell -Command "Expand-Archive -Path 'ffmpeg.zip' -DestinationPath '.' -Force"
+if %errorlevel% neq 0 (
+    call :print_error "Falha ao extrair FFmpeg"
+    goto :eof
+)
+
+REM Encontrar e mover os executáveis
+for /d %%d in (ffmpeg-*) do (
+    if exist "%%d\bin\ffmpeg.exe" (
+        copy "%%d\bin\ffmpeg.exe" "bin\" >nul
+        copy "%%d\bin\ffprobe.exe" "bin\" >nul
+        rmdir /s /q "%%d"
+        del "ffmpeg.zip"
+        call :print_success "FFmpeg + FFprobe instalados em bin\"
+        goto :eof
+    )
+)
+
+call :print_error "FFmpeg nao encontrado no arquivo extraido"
 goto :eof
 
 :main
@@ -84,7 +121,26 @@ if !PYTHON_MAJOR! equ 3 if !PYTHON_MINOR! lss 8 (
     exit /b 1
 )
 
-REM 2. Criar ambiente virtual
+REM 2. Criar estrutura de diretórios
+echo.
+echo 📁 Criando estrutura de diretorios...
+if not exist "videos" mkdir videos
+if not exist "temp" mkdir temp
+if not exist "bin" mkdir bin
+
+call :print_success "Diretorios criados: videos\, temp\, bin\"
+
+REM 3. Instalar FFmpeg + FFprobe
+echo.
+if exist "bin\ffmpeg.exe" (
+    call :print_success "FFmpeg ja instalado"
+) else if exist "bin\ffmpeg" (
+    call :print_success "FFmpeg ja instalado"
+) else (
+    call :download_ffmpeg
+)
+
+REM 4. Criar ambiente virtual
 echo.
 echo 📦 Criando ambiente virtual...
 if exist ".venv" (
@@ -101,7 +157,7 @@ if %errorlevel% neq 0 (
 
 call :print_success "Ambiente virtual criado"
 
-REM 3. Ativar ambiente virtual
+REM 5. Ativar ambiente virtual
 echo.
 echo ⚡ Ativando ambiente virtual...
 call .venv\Scripts\activate.bat
@@ -113,13 +169,13 @@ if %errorlevel% neq 0 (
 
 call :print_success "Ambiente virtual ativado"
 
-REM 4. Atualizar pip
+REM 6. Atualizar pip
 echo.
 echo 📥 Atualizando pip...
 python -m pip install --upgrade pip >nul 2>&1
 call :print_success "Pip atualizado"
 
-REM 5. Instalar dependências obrigatórias
+REM 7. Instalar dependências obrigatórias
 echo.
 echo 📦 Instalando dependencias obrigatorias...
 echo    • Instalando Groq...
@@ -131,7 +187,7 @@ if %errorlevel% neq 0 (
 )
 call :print_success "Groq instalado"
 
-REM 6. Instalar dependências opcionais
+REM 8. Instalar dependências opcionais
 echo.
 echo 🧠 Instalando dependencias opcionais...
 echo    • Instalando Google Gen AI SDK + Pydantic...
@@ -144,28 +200,6 @@ if %errorlevel% equ 0 (
     call :print_info "Funcionalidades de analise serao limitadas"
     call :print_info "Para instalar depois: pip install google-genai>=1.23.0 pydantic>=2.11.7"
     set GEMINI_AVAILABLE=false
-)
-
-REM 7. Criar estrutura de diretórios
-echo.
-echo 📁 Criando estrutura de diretorios...
-if not exist "videos" mkdir videos
-if not exist "temp" mkdir temp
-
-call :print_success "Diretorios criados: videos\, temp\"
-call :print_info "Modulos serao criados automaticamente ao processar videos"
-
-REM 8. Verificar FFmpeg
-echo.
-echo 🎥 Verificando FFmpeg...
-if exist "bin\ffmpeg.exe" (
-    call :print_success "FFmpeg encontrado no projeto"
-) else if exist "bin\ffmpeg" (
-    call :print_success "FFmpeg encontrado no projeto"
-) else (
-    call :print_warning "FFmpeg nao encontrado em bin\"
-    call :print_info "Sistema pode nao funcionar sem FFmpeg"
-    call :print_info "Baixe em: https://ffmpeg.org/download.html"
 )
 
 REM 9. Configurar arquivo de ambiente
@@ -211,6 +245,30 @@ REM 11. Testar instalação
 echo.
 echo 🧪 Testando instalacao...
 
+REM Testar FFmpeg
+if exist "bin\ffmpeg.exe" (
+    bin\ffmpeg.exe -version >nul 2>&1
+    if %errorlevel% equ 0 (
+        call :print_success "FFmpeg: Funcionando"
+    ) else (
+        call :print_error "FFmpeg: Erro na execucao"
+    )
+) else (
+    call :print_error "FFmpeg: Nao encontrado"
+)
+
+REM Testar FFprobe
+if exist "bin\ffprobe.exe" (
+    bin\ffprobe.exe -version >nul 2>&1
+    if %errorlevel% equ 0 (
+        call :print_success "FFprobe: Funcionando"
+    ) else (
+        call :print_error "FFprobe: Erro na execucao"
+    )
+) else (
+    call :print_warning "FFprobe: Nao encontrado (sistema usara fallback com FFmpeg)"
+)
+
 REM Testar importações
 python -c "import groq; print('Groq: OK')" >nul 2>&1
 if %errorlevel% equ 0 (
@@ -227,7 +285,7 @@ if %errorlevel% equ 0 (
 )
 
 REM Testar sistema principal
-python transcribe.py >nul 2>&1
+python content_pipeline.py --help >nul 2>&1
 if %errorlevel% equ 0 (
     call :print_success "Sistema funcionando corretamente"
 ) else (
@@ -251,11 +309,19 @@ if "!GEMINI_AVAILABLE!"=="true" (
 )
 
 if exist "bin\ffmpeg.exe" (
-    echo 🎥 FFmpeg: ✅ Incluido no projeto
+    echo 🎥 FFmpeg: ✅ Instalado automaticamente
 ) else if exist "bin\ffmpeg" (
-    echo 🎥 FFmpeg: ✅ Incluido no projeto
+    echo 🎥 FFmpeg: ✅ Instalado automaticamente
 ) else (
-    echo 🎥 FFmpeg: ⚠️  Nao encontrado
+    echo 🎥 FFmpeg: ❌ Falha na instalacao
+)
+
+if exist "bin\ffprobe.exe" (
+    echo 🔍 FFprobe: ✅ Instalado automaticamente
+) else if exist "bin\ffprobe" (
+    echo 🔍 FFprobe: ✅ Instalado automaticamente
+) else (
+    echo 🔍 FFprobe: ⚠️  Nao instalado (fallback disponivel)
 )
 
 echo.
@@ -269,6 +335,11 @@ if exist "temp" (
     echo    temp\: ✅ OK
 ) else (
     echo    temp\: ❌ Faltando
+)
+if exist "bin" (
+    echo    bin\: ✅ OK
+) else (
+    echo    bin\: ❌ Faltando
 )
 
 set /a MODULE_COUNT=0
@@ -291,18 +362,18 @@ echo.
 echo 2. 📹 Coloque seus videos na pasta videos\
 echo.
 echo 3. 🚀 Execute o sistema:
-echo    • Modo simples: python transcribe.py videos\seu_video.mp4
-echo    • Modo completo: python transcribe.py --complete videos\seu_video.mp4 1 1
-echo    • Modo lote: python transcribe.py --batch
+echo    • Modo simples: python content_pipeline.py
+echo    • Modo completo: python content_pipeline.py --complete videos\seu_video.mp4 1 1
+echo    • Modo lote: python content_pipeline.py --batch
 echo.
-echo 4. 📚 Consulte o guia: type PROJETO_TRANSCRICAO_AULAS.md
+echo 4. 📚 Consulte o README.md para instrucoes detalhadas
 echo.
 
-call :print_success "Instalacao concluida!"
-call :print_info "Leia o PROJETO_TRANSCRICAO_AULAS.md para instrucoes detalhadas"
+call :print_success "Instalacao completa concluida!"
+call :print_info "Sistema pronto para uso com FFmpeg + FFprobe instalados automaticamente"
 
 echo.
-echo ⭐ Sistema Enhanced Transcription v2.0.0 - Full Stack Club
+echo ⭐ Sistema Enhanced Video Editing AI v3.0.0 - Instalação Completa
 echo.
 
 REM Manter janela aberta
